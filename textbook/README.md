@@ -35,3 +35,4 @@ textbook/assets/NN_topic/
 4. [04 Transaction Cost Sensitivity](04_transaction_cost_sensitivity.md)
 5. [05 Execution Assumptions](05_execution_assumptions.md)
 6. [06 Trade Log and Slippage](06_trade_log_and_slippage.md)
+7. [07 Trade Review and Attribution](07_trade_review_and_attribution.md)
