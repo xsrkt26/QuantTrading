@@ -37,3 +37,4 @@ textbook/assets/NN_topic/
 6. [06 Trade Log and Slippage](06_trade_log_and_slippage.md)
 7. [07 Trade Review and Attribution](07_trade_review_and_attribution.md)
 8. [08 MA Filter Improvement](08_ma_filter_improvement.md)
+9. [09 Band Robustness](09_band_robustness.md)

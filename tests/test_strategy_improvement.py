@@ -6,6 +6,8 @@ from quant_trading.strategy_improvement import (
     add_filtered_moving_average_strategy_next_open,
     apply_band_filter,
     apply_confirmation_filter,
+    evaluate_band_cost_sensitivity,
+    evaluate_band_sensitivity,
     evaluate_filter_variants,
 )
 
@@ -80,3 +82,60 @@ def test_evaluate_filter_variants_returns_comparison_rows() -> None:
 def test_confirmation_filter_rejects_non_positive_days() -> None:
     with pytest.raises(ValueError, match="days"):
         apply_confirmation_filter(pd.Series([1, 0]), days=0)
+
+
+def test_evaluate_band_sensitivity_returns_split_rows() -> None:
+    df = pd.DataFrame(
+        {
+            "Open": [100, 101, 102, 103, 104, 105, 106, 107],
+            "Close": [100, 101, 102, 103, 104, 105, 106, 107],
+        },
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+
+    result = evaluate_band_sensitivity(
+        df,
+        band_pcts=[0.0, 0.01],
+        splits=[],
+        short_window=2,
+        long_window=3,
+        transaction_cost_bps=0,
+        slippage_bps=0,
+        commission_bps=0,
+    )
+
+    assert result.empty
+
+    result = evaluate_band_sensitivity(
+        df,
+        band_pcts=[0.0, 0.01],
+        short_window=2,
+        long_window=3,
+        transaction_cost_bps=0,
+        slippage_bps=0,
+        commission_bps=0,
+    )
+
+    assert set(result["band_pct"]) == {0.0, 0.01}
+    assert {"train", "valid", "test"}.issuperset(set(result["period"]))
+
+
+def test_evaluate_band_cost_sensitivity_returns_cost_rows() -> None:
+    df = pd.DataFrame(
+        {
+            "Open": [100, 101, 102, 103, 104, 105, 106, 107],
+            "Close": [100, 101, 102, 103, 104, 105, 106, 107],
+        },
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+
+    result = evaluate_band_cost_sensitivity(
+        df,
+        band_pcts=[0.0, 0.01],
+        cost_bps_values=[0, 10],
+        short_window=2,
+        long_window=3,
+    )
+
+    assert set(result["cost_bps"]) == {0, 10}
+    assert set(result["band_pct"]) == {0.0, 0.01}
