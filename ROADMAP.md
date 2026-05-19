@@ -48,14 +48,20 @@
 
 ## 每节课交付规范
 
-每节课默认包含四类文件：
+以后每节课的主交付改为课本式讲义：
 
-- `notebooks/NN_topic.ipynb`：可运行代码讲义。
-- `notes/YYYY-MM-DD-topic.md`：概念笔记。
-- `notes/YYYY-MM-DD-topic-explained.md`：逐段讲解，用来配合 notebook 阅读。
+- `textbook/NN_topic.md`：主课本，直接包含概念讲解、关键代码、运行结果、图表和课后总结。
+- `textbook/assets/NN_topic/`：课本使用的图片、图表和必要截图。
+- `notebooks/NN_topic.ipynb`：可运行实验稿，用于自己动手执行和修改参数。
+- `notes/YYYY-MM-DD-topic.md`：概念笔记，保存核心定义和结论。
 - `reports/YYYY-MM-DD_topic.md`：有实证结果时保存正式报告。
 
-以后每次新增讲义后，都要补一份 `*-explained.md`，说明代码每一段在做什么、为什么这么做、结果应该如何解读。
+课本写作要求：
+
+- 先讲问题，再讲概念，再讲代码，最后讲如何解读结果。
+- 重要代码直接放进课本，使用可复制的代码块；如果需要配图，图片放在 `textbook/assets/` 并在课本中直接嵌入。
+- 净值曲线、回撤曲线、交易收益图等结果图必须直接出现在课本中，避免学生在多个文件之间来回找。
+- notebook 作为练习场，课本作为正式学习材料。
 
 ## 阶段 1：Python 数据分析基础
 
