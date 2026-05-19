@@ -37,6 +37,29 @@ FACTOR_SYMBOLS = (
 DEFAULT_START = "2006-01-01"
 DEFAULT_COST_BPS = 3.0
 
+TEXTBOOK_FILES: dict[int, str] = {
+    11: "11_多资产等权趋势组合.md",
+    12: "12_组合相关性与回撤.md",
+    13: "13_仓位管理与波动率目标.md",
+    14: "14_再平衡与换手率.md",
+    15: "15_突破策略.md",
+    16: "16_时间序列动量.md",
+    17: "17_均值回归策略.md",
+    18: "18_多策略组合.md",
+    19: "19_因子研究基础.md",
+    20: "20_因子IC与换手率.md",
+    21: "21_因子中性化.md",
+    22: "22_多因子模型.md",
+    23: "23_金融时间序列基础.md",
+    24: "24_配对交易与协整.md",
+    25: "25_机器学习信号基准.md",
+    26: "26_机器学习验证与泄露.md",
+    27: "27_研究管线工程化.md",
+    28: "28_回测框架设计.md",
+    29: "29_模拟盘检查清单.md",
+    30: "30_风控政策与实盘准备.md",
+}
+
 
 @dataclass(frozen=True)
 class LessonSpec:
@@ -52,7 +75,7 @@ class LessonSpec:
 
     @property
     def textbook_file(self) -> str:
-        return f"{self.chapter:02d}_{self.slug}.md"
+        return TEXTBOOK_FILES.get(self.chapter, f"{self.chapter:02d}_{self.slug}.md")
 
     @property
     def script_file(self) -> str:
