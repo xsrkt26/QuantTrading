@@ -8,7 +8,10 @@ import numpy as np
 import pandas as pd
 
 from quant_trading.market_data import TRADING_DAYS_PER_YEAR
-from quant_trading.moving_average import add_moving_average_strategy
+from quant_trading.moving_average import (
+    add_moving_average_strategy,
+    add_moving_average_strategy_next_open,
+)
 
 
 @dataclass(frozen=True)
@@ -164,6 +167,50 @@ def evaluate_transaction_cost_sensitivity(
     return pd.DataFrame(rows)
 
 
+def compare_execution_assumptions(
+    df: pd.DataFrame,
+    short_window: int,
+    long_window: int,
+    transaction_cost_bps: float = 1.0,
+) -> pd.DataFrame:
+    """Compare close-to-close and next-open execution assumptions."""
+    models = [
+        ("close_to_close", add_moving_average_strategy(df, short_window, long_window, transaction_cost_bps)),
+        (
+            "next_open",
+            add_moving_average_strategy_next_open(
+                df,
+                short_window=short_window,
+                long_window=long_window,
+                transaction_cost_bps=transaction_cost_bps,
+            ),
+        ),
+    ]
+
+    rows = []
+    for execution_model, strategy in models:
+        strategy_metrics = _period_metrics(strategy["strategy_return"])
+        rows.append(
+            {
+                "execution_model": execution_model,
+                "short_window": short_window,
+                "long_window": long_window,
+                "transaction_cost_bps": transaction_cost_bps,
+                "start_date": strategy.index.min().strftime("%Y-%m-%d"),
+                "end_date": strategy.index.max().strftime("%Y-%m-%d"),
+                "rows": len(strategy),
+                "strategy_final_equity": strategy_metrics["final_equity"],
+                "strategy_annualized_return": strategy_metrics["annualized_return"],
+                "strategy_max_drawdown": strategy_metrics["max_drawdown"],
+                "strategy_calmar": strategy_metrics["calmar"],
+                "trades": float(strategy["trade"].sum()),
+                "time_in_market": float(strategy["position"].mean()),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def plot_parameter_heatmaps(
     results: pd.DataFrame,
     metric: str = "strategy_annualized_return",
@@ -256,6 +303,44 @@ def plot_cost_sensitivity(
     return fig
 
 
+def plot_execution_comparison(
+    close_to_close: pd.DataFrame,
+    next_open: pd.DataFrame,
+    output_path: str | Path | None = None,
+) -> plt.Figure:
+    """Plot equity and drawdown for two execution assumptions."""
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    close_to_close["strategy_equity"].plot(
+        ax=axes[0], color="#2ca02c", label="Close-to-close"
+    )
+    next_open["strategy_equity"].plot(ax=axes[0], color="#1f77b4", label="Next open")
+    axes[0].set_title("Strategy Equity by Execution Assumption")
+    axes[0].set_ylabel("Equity")
+    axes[0].legend(loc="best")
+    axes[0].grid(True, alpha=0.25)
+
+    close_to_close["strategy_drawdown"].plot(
+        ax=axes[1], color="#d62728", label="Close-to-close drawdown"
+    )
+    next_open["strategy_drawdown"].plot(
+        ax=axes[1], color="#9467bd", label="Next-open drawdown"
+    )
+    axes[1].set_title("Strategy Drawdown by Execution Assumption")
+    axes[1].set_ylabel("Drawdown")
+    axes[1].legend(loc="best")
+    axes[1].grid(True, alpha=0.25)
+
+    fig.tight_layout()
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
 def format_parameter_table(df: pd.DataFrame) -> str:
     """Format selected parameter rows as a compact markdown table."""
     columns = [
@@ -316,6 +401,40 @@ def format_cost_sensitivity_table(df: pd.DataFrame) -> str:
     formatted["total_transaction_cost"] = formatted["total_transaction_cost"].map(
         _format_pct
     )
+
+    header = "| " + " | ".join(formatted.columns) + " |"
+    separator = "| " + " | ".join(["---"] * len(formatted.columns)) + " |"
+    body = [
+        "| " + " | ".join(str(value) for value in row) + " |"
+        for row in formatted.itertuples(index=False, name=None)
+    ]
+    return "\n".join([header, separator, *body])
+
+
+def format_execution_comparison_table(df: pd.DataFrame) -> str:
+    """Format execution comparison rows as a compact markdown table."""
+    columns = [
+        "execution_model",
+        "strategy_final_equity",
+        "strategy_annualized_return",
+        "strategy_max_drawdown",
+        "strategy_calmar",
+        "trades",
+        "time_in_market",
+    ]
+    formatted = df[columns].copy()
+    formatted["strategy_final_equity"] = formatted["strategy_final_equity"].map(
+        lambda value: f"{value:.4f}"
+    )
+    formatted["strategy_annualized_return"] = formatted[
+        "strategy_annualized_return"
+    ].map(_format_pct)
+    formatted["strategy_max_drawdown"] = formatted["strategy_max_drawdown"].map(
+        _format_pct
+    )
+    formatted["strategy_calmar"] = formatted["strategy_calmar"].map(_format_ratio)
+    formatted["trades"] = formatted["trades"].map(lambda value: f"{value:.0f}")
+    formatted["time_in_market"] = formatted["time_in_market"].map(_format_pct)
 
     header = "| " + " | ".join(formatted.columns) + " |"
     separator = "| " + " | ".join(["---"] * len(formatted.columns)) + " |"

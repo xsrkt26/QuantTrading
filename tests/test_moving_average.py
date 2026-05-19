@@ -3,6 +3,7 @@ import pytest
 
 from quant_trading.moving_average import (
     add_moving_average_strategy,
+    add_moving_average_strategy_next_open,
     summarize_moving_average_strategy,
 )
 
@@ -38,6 +39,26 @@ def test_moving_average_strategy_applies_transaction_cost() -> None:
     assert result["strategy_return"].iloc[3] == pytest.approx(
         (103.0 / 102.0 - 1) - 0.001
     )
+
+
+def test_next_open_strategy_uses_open_to_next_open_return() -> None:
+    df = pd.DataFrame(
+        {
+            "Open": [100.0, 110.0, 120.0, 130.0, 143.0],
+            "Close": [100.0, 101.0, 102.0, 103.0, 104.0],
+        },
+        index=pd.date_range("2024-01-01", periods=5),
+    )
+
+    result = add_moving_average_strategy_next_open(
+        df, short_window=2, long_window=3, transaction_cost_bps=0
+    )
+
+    assert result["signal"].iloc[2] == 1
+    assert result["position"].iloc[2] == 0
+    assert result["position"].iloc[3] == 1
+    assert result["open_to_next_open_return"].iloc[3] == pytest.approx(143.0 / 130.0 - 1)
+    assert result["strategy_return"].iloc[3] == pytest.approx(143.0 / 130.0 - 1)
 
 
 def test_summarize_moving_average_strategy() -> None:

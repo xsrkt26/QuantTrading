@@ -73,6 +73,53 @@ def add_moving_average_strategy(
     return result
 
 
+def add_moving_average_strategy_next_open(
+    df: pd.DataFrame,
+    short_window: int = 20,
+    long_window: int = 100,
+    transaction_cost_bps: float = 1.0,
+) -> pd.DataFrame:
+    """Add a moving-average strategy executed at the next trading day's open."""
+    _validate_windows(short_window, long_window)
+    if transaction_cost_bps < 0:
+        raise ValueError("transaction_cost_bps must be non-negative.")
+    for column in ["Open", "Close"]:
+        if column not in df.columns:
+            raise ValueError(f"Missing required column: {column}")
+
+    result = add_return_equity_drawdown(df)
+    result["open_to_next_open_return"] = result["Open"].shift(-1) / result["Open"] - 1
+    result["ma_short"] = (
+        result["Close"].rolling(short_window, min_periods=short_window).mean()
+    )
+    result["ma_long"] = result["Close"].rolling(long_window, min_periods=long_window).mean()
+
+    has_both_averages = result["ma_short"].notna() & result["ma_long"].notna()
+    result["signal"] = ((result["ma_short"] > result["ma_long"]) & has_both_averages).astype(
+        int
+    )
+
+    # Signal from yesterday's close is executed at today's open.
+    result["position"] = result["signal"].shift(1).fillna(0).astype(float)
+    result["trade"] = result["position"].diff().abs().fillna(result["position"].abs())
+
+    cost_rate = transaction_cost_bps / 10_000
+    result["strategy_return_before_cost"] = (
+        result["position"] * result["open_to_next_open_return"].fillna(0)
+    )
+    result["transaction_cost"] = result["trade"] * cost_rate
+    result["strategy_return"] = (
+        result["strategy_return_before_cost"] - result["transaction_cost"]
+    )
+    result["strategy_equity"] = (1 + result["strategy_return"]).cumprod()
+    result["strategy_running_max"] = result["strategy_equity"].cummax()
+    result["strategy_drawdown"] = (
+        result["strategy_equity"] / result["strategy_running_max"] - 1
+    )
+
+    return result
+
+
 def summarize_moving_average_strategy(
     df: pd.DataFrame,
     symbol: str,

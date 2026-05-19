@@ -2,6 +2,7 @@ import pandas as pd
 
 from quant_trading.validation import (
     DateSplit,
+    compare_execution_assumptions,
     compare_parameter_across_periods,
     evaluate_moving_average_grid,
     evaluate_transaction_cost_sensitivity,
@@ -109,3 +110,23 @@ def test_evaluate_transaction_cost_sensitivity() -> None:
     assert result.loc[0, "trades"] == result.loc[1, "trades"]
     assert result.loc[1, "total_transaction_cost"] > result.loc[0, "total_transaction_cost"]
     assert result.loc[1, "strategy_final_equity"] < result.loc[0, "strategy_final_equity"]
+
+
+def test_compare_execution_assumptions() -> None:
+    df = pd.DataFrame(
+        {
+            "Open": [100, 101, 102, 103, 104, 105, 106, 107],
+            "Close": [100, 101, 102, 103, 104, 105, 106, 107],
+        },
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+
+    result = compare_execution_assumptions(
+        df,
+        short_window=2,
+        long_window=3,
+        transaction_cost_bps=0,
+    )
+
+    assert set(result["execution_model"]) == {"close_to_close", "next_open"}
+    assert result["trades"].nunique() == 1
