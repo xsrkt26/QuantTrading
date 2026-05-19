@@ -121,6 +121,49 @@ def compare_parameter_across_periods(
     return selected.sort_values("period_order").drop(columns=["period_order"])
 
 
+def evaluate_transaction_cost_sensitivity(
+    df: pd.DataFrame,
+    short_window: int,
+    long_window: int,
+    transaction_costs_bps: list[float],
+) -> pd.DataFrame:
+    """Evaluate one moving-average strategy under different cost assumptions."""
+    rows = []
+    for cost_bps in transaction_costs_bps:
+        strategy = add_moving_average_strategy(
+            df,
+            short_window=short_window,
+            long_window=long_window,
+            transaction_cost_bps=cost_bps,
+        )
+        strategy_metrics = _period_metrics(strategy["strategy_return"])
+        buy_hold_metrics = _period_metrics(strategy["return"])
+        total_cost = float(strategy["transaction_cost"].sum())
+
+        rows.append(
+            {
+                "short_window": short_window,
+                "long_window": long_window,
+                "transaction_cost_bps": cost_bps,
+                "start_date": strategy.index.min().strftime("%Y-%m-%d"),
+                "end_date": strategy.index.max().strftime("%Y-%m-%d"),
+                "rows": len(strategy),
+                "buy_hold_final_equity": buy_hold_metrics["final_equity"],
+                "strategy_final_equity": strategy_metrics["final_equity"],
+                "buy_hold_annualized_return": buy_hold_metrics["annualized_return"],
+                "strategy_annualized_return": strategy_metrics["annualized_return"],
+                "buy_hold_max_drawdown": buy_hold_metrics["max_drawdown"],
+                "strategy_max_drawdown": strategy_metrics["max_drawdown"],
+                "strategy_calmar": strategy_metrics["calmar"],
+                "trades": float(strategy["trade"].sum()),
+                "time_in_market": float(strategy["position"].mean()),
+                "total_transaction_cost": total_cost,
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def plot_parameter_heatmaps(
     results: pd.DataFrame,
     metric: str = "strategy_annualized_return",
@@ -171,6 +214,48 @@ def plot_parameter_heatmaps(
     return fig
 
 
+def plot_cost_sensitivity(
+    results: pd.DataFrame,
+    output_path: str | Path | None = None,
+) -> plt.Figure:
+    """Plot annualized return, max drawdown, and Calmar against costs."""
+    required_columns = [
+        "transaction_cost_bps",
+        "strategy_annualized_return",
+        "strategy_max_drawdown",
+        "strategy_calmar",
+    ]
+    missing = [col for col in required_columns if col not in results.columns]
+    if missing:
+        raise ValueError(f"Cost sensitivity results are missing columns: {missing}")
+
+    x = results["transaction_cost_bps"]
+    fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
+
+    axes[0].plot(x, results["strategy_annualized_return"], marker="o", color="#2ca02c")
+    axes[0].set_ylabel("Annual Return")
+    axes[0].grid(True, alpha=0.25)
+
+    axes[1].plot(x, results["strategy_max_drawdown"], marker="o", color="#d62728")
+    axes[1].set_ylabel("Max Drawdown")
+    axes[1].grid(True, alpha=0.25)
+
+    axes[2].plot(x, results["strategy_calmar"], marker="o", color="#1f77b4")
+    axes[2].set_ylabel("Calmar")
+    axes[2].set_xlabel("Transaction Cost (bps)")
+    axes[2].grid(True, alpha=0.25)
+
+    fig.suptitle("Transaction Cost Sensitivity")
+    fig.tight_layout()
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
 def format_parameter_table(df: pd.DataFrame) -> str:
     """Format selected parameter rows as a compact markdown table."""
     columns = [
@@ -192,6 +277,45 @@ def format_parameter_table(df: pd.DataFrame) -> str:
         formatted[col] = formatted[col].map(_format_pct)
     formatted["strategy_calmar"] = formatted["strategy_calmar"].map(_format_ratio)
     formatted["trades"] = formatted["trades"].map(lambda value: f"{value:.0f}")
+
+    header = "| " + " | ".join(formatted.columns) + " |"
+    separator = "| " + " | ".join(["---"] * len(formatted.columns)) + " |"
+    body = [
+        "| " + " | ".join(str(value) for value in row) + " |"
+        for row in formatted.itertuples(index=False, name=None)
+    ]
+    return "\n".join([header, separator, *body])
+
+
+def format_cost_sensitivity_table(df: pd.DataFrame) -> str:
+    """Format cost sensitivity rows as a compact markdown table."""
+    columns = [
+        "transaction_cost_bps",
+        "strategy_final_equity",
+        "strategy_annualized_return",
+        "strategy_max_drawdown",
+        "strategy_calmar",
+        "trades",
+        "total_transaction_cost",
+    ]
+    formatted = df[columns].copy()
+    formatted["transaction_cost_bps"] = formatted["transaction_cost_bps"].map(
+        lambda value: f"{value:.1f}"
+    )
+    formatted["strategy_final_equity"] = formatted["strategy_final_equity"].map(
+        lambda value: f"{value:.4f}"
+    )
+    formatted["strategy_annualized_return"] = formatted[
+        "strategy_annualized_return"
+    ].map(_format_pct)
+    formatted["strategy_max_drawdown"] = formatted["strategy_max_drawdown"].map(
+        _format_pct
+    )
+    formatted["strategy_calmar"] = formatted["strategy_calmar"].map(_format_ratio)
+    formatted["trades"] = formatted["trades"].map(lambda value: f"{value:.0f}")
+    formatted["total_transaction_cost"] = formatted["total_transaction_cost"].map(
+        _format_pct
+    )
 
     header = "| " + " | ".join(formatted.columns) + " |"
     separator = "| " + " | ".join(["---"] * len(formatted.columns)) + " |"

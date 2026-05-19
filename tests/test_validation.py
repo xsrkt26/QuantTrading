@@ -4,6 +4,7 @@ from quant_trading.validation import (
     DateSplit,
     compare_parameter_across_periods,
     evaluate_moving_average_grid,
+    evaluate_transaction_cost_sensitivity,
     pivot_metric,
     select_top_parameters,
 )
@@ -89,3 +90,22 @@ def test_pivot_metric() -> None:
 
     assert table.loc[2, 5] == 0.10
     assert table.loc[2, 10] == 0.15
+
+
+def test_evaluate_transaction_cost_sensitivity() -> None:
+    df = pd.DataFrame(
+        {"Close": [100, 101, 102, 103, 104, 105, 106, 107]},
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+
+    result = evaluate_transaction_cost_sensitivity(
+        df,
+        short_window=2,
+        long_window=3,
+        transaction_costs_bps=[0, 10],
+    )
+
+    assert result["transaction_cost_bps"].tolist() == [0, 10]
+    assert result.loc[0, "trades"] == result.loc[1, "trades"]
+    assert result.loc[1, "total_transaction_cost"] > result.loc[0, "total_transaction_cost"]
+    assert result.loc[1, "strategy_final_equity"] < result.loc[0, "strategy_final_equity"]
