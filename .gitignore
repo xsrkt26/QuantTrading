@@ -28,6 +28,12 @@ data/external/*
 reports/generated/
 logs/
 
+# Local book files
+resources/books/pdf/
+*.pdf
+*.epub
+*.mobi
+
 # IDE and OS
 .vscode/
 .idea/
