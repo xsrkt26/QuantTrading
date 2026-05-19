@@ -27,6 +27,8 @@ textbook/assets/NN_topic/
 
 代码仍然保留在 `src/`、`scripts/` 和 `notebooks/` 中。课本负责把学习体验串起来，避免只看代码或只看零散笔记。
 
+第 11-30 章已经升级为真实数据实跑版：每章都有脚本、notebook、报告和课本图示。
+
 ## 目录
 
 完整目录见：[Course Catalog](COURSE_CATALOG.md)

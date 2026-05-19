@@ -1,0 +1,7 @@
+metric,value
+average_pair_correlation,0.3933932328511814
+min_pair_correlation,-0.2162752988172049
+max_pair_correlation,0.8494854893310069
+portfolio_max_drawdown,-0.24363263863091233
+median_single_asset_max_drawdown,-0.2816663507275711
+latest_126d_SPY_TLT_corr,0.11363680428781117

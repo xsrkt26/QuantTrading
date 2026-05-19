@@ -1,6 +1,6 @@
 # 29 Paper Trading Checklist
 
-状态：预习版课本。正式上到本章时，会补充完整实跑结果、报告和必要测试。
+状态：真实数据实跑版。
 
 对应 RoadMap：阶段 10：模拟盘
 
@@ -8,19 +8,7 @@
 
 回测通过后，为什么还不能直接实盘？
 
-## 为什么重要
-
-这一章的目的不是多记一个术语，而是把前面学到的研究流程迁移到新的问题上。
-
-你读这一章时要一直问：
-
-```text
-这个规则想解决什么问题？
-它赚的是 beta、alpha、风险溢价，还是执行/约束优势？
-它最容易在哪种市场环境失效？
-```
-
-## 核心概念
+## 必须理解的概念
 
 - 模拟盘
 - 信号核对
@@ -28,37 +16,53 @@
 - 持仓核对
 - 日志
 
-## 代码骨架
+## 真实数据设置
+
+- symbols: SPY
+- start_date: 2006-01-03
+- end_date: 2026-05-18
+- rows: 5125
+- setup: Last 80 trading days simulated from real SPY signals
+
+## 关键代码
 
 ```python
-record = {'date': today, 'signal': signal, 'order': order, 'fill': fill, 'position': position}
-paper_log.append(record)
+paper_log.append({'date': today, 'signal': signal, 'order': order, 'fill': fill})
 ```
 
-这段代码是本章的最小思想骨架。正式上课时，我们会把它扩展成可复用函数、脚本、notebook 和报告。
+完整脚本：`scripts/29_paper_trading_checklist.py`
+
+可运行 notebook：`notebooks/29_paper_trading_checklist.ipynb`
+
+正式报告：`reports/`
+
+## 实跑结果
+
+| metric | value |
+| --- | --- |
+| paper_days | 80.0000 |
+| orders | 3.0000 |
+| average_slippage_bps | 45.0539 |
+| checklist_completion_rate | 1.0000 |
+| paper_final_equity | 0.9898 |
 
 ## 图示
 
 ![Paper Trading Checklist](assets/29_paper_trading_checklist/29_paper_trading_checklist.png)
 
-这张图是预习图，用来帮助你先建立直觉。正式实验图会在本章开讲时根据真实数据生成。
+## 讲解
 
-## 实验任务
-
-- 设计每日模拟盘日志
-- 记录信号和订单差异
-- 统计模拟盘偏差
-
-## 验收标准
-
-- 能每天复盘信号
-- 能解释回测和模拟盘差异
-- 能发现执行问题
+- 模拟盘日志要记录信号、订单、成交、持仓和检查项。
+- 模拟盘不是为了证明能赚钱，而是验证流程是否稳定可复盘。
+- 一旦日志字段缺失，实盘后就很难解释错误来自信号还是执行。
 
 ## 本课结论
 
-本章预习阶段你要先掌握问题定义和研究框架。真正做实验时，不以“曲线好看”为标准，而以是否解决本章一开始定义的问题为标准。
+模拟盘的重点不是赚钱，而是发现研究代码到交易流程之间的断点。
 
-## 下一步
+## 复习问题
 
-第 30 章建立实盘前风险政策。
+1. 本章策略或实验到底想解决什么问题？
+2. 结果中最重要的风险指标是什么？
+3. 如果换一个市场或成本假设，结论最可能在哪里变化？
+4. 这个实验离真实交易还缺哪一步？

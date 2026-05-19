@@ -1,6 +1,6 @@
 # 25 Machine Learning Signal Baseline
 
-状态：预习版课本。正式上到本章时，会补充完整实跑结果、报告和必要测试。
+状态：真实数据实跑版。
 
 对应 RoadMap：阶段 8：机器学习量化
 
@@ -8,19 +8,7 @@
 
 机器学习能不能比简单规则更好？
 
-## 为什么重要
-
-这一章的目的不是多记一个术语，而是把前面学到的研究流程迁移到新的问题上。
-
-你读这一章时要一直问：
-
-```text
-这个规则想解决什么问题？
-它赚的是 beta、alpha、风险溢价，还是执行/约束优势？
-它最容易在哪种市场环境失效？
-```
-
-## 核心概念
+## 必须理解的概念
 
 - 特征
 - 标签
@@ -28,38 +16,52 @@
 - 基准模型
 - 交易指标
 
-## 代码骨架
+## 真实数据设置
+
+- symbols: SPY
+- start_date: 2006-01-03
+- end_date: 2026-05-18
+- rows: 5125
+- setup: Ridge linear baseline on SPY daily features
+
+## 关键代码
 
 ```python
-features = pd.concat([momentum, volatility, volume_change], axis=1)
-label = (future_return > 0).astype(int)
-# train only on past data, compare with simple momentum baseline
+prediction = ridge_model.predict(features)
+signal = prediction > 0
 ```
 
-这段代码是本章的最小思想骨架。正式上课时，我们会把它扩展成可复用函数、脚本、notebook 和报告。
+完整脚本：`scripts/25_ml_signal_baseline.py`
+
+可运行 notebook：`notebooks/25_ml_signal_baseline.ipynb`
+
+正式报告：`reports/`
+
+## 实跑结果
+
+| case | final_equity | ann_return | ann_vol | max_drawdown | sharpe | calmar | direction_accuracy |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ridge_features | 2.3072 | 12.63% | 16.42% | -22.24% | 0.7688 | 0.5676 | 50.68% |
+| momentum_baseline | 2.2367 | 12.13% | 11.54% | -13.86% | 1.0514 | 0.8754 | 53.05% |
+| buy_hold_test | 2.7888 | 15.70% | 19.79% | -33.72% | 0.7935 | 0.4657 | nan |
 
 ## 图示
 
 ![Machine Learning Signal Baseline](assets/25_ml_signal_baseline/25_ml_signal_baseline.png)
 
-这张图是预习图，用来帮助你先建立直觉。正式实验图会在本章开讲时根据真实数据生成。
+## 讲解
 
-## 实验任务
-
-- 构造价格特征
-- 预测未来收益方向
-- 和动量基准比较
-
-## 验收标准
-
-- 能说明准确率不是交易收益
-- 能避免未来函数
-- 能和简单基准比较
+- 模型用训练集拟合，只在测试集评价，避免把未来信息带入训练。
+- 机器学习策略必须和简单动量基准比较；如果赢不了基准，复杂度没有价值。
+- 方向准确率和交易收益不是一回事，最终仍要看净值、回撤和成本。
 
 ## 本课结论
 
-本章预习阶段你要先掌握问题定义和研究框架。真正做实验时，不以“曲线好看”为标准，而以是否解决本章一开始定义的问题为标准。
+机器学习模型必须和简单规则比较，不能只汇报准确率。
 
-## 下一步
+## 复习问题
 
-第 26 章专门讲机器学习泄露和验证。
+1. 本章策略或实验到底想解决什么问题？
+2. 结果中最重要的风险指标是什么？
+3. 如果换一个市场或成本假设，结论最可能在哪里变化？
+4. 这个实验离真实交易还缺哪一步？

@@ -1,64 +1,65 @@
 # 21 Factor Neutralization
 
-状态：预习版课本。正式上到本章时，会补充完整实跑结果、报告和必要测试。
+状态：真实数据实跑版。
 
 对应 RoadMap：阶段 5：因子预处理
 
 ## 本课问题
 
-因子有效，是真的因子有效，还是暴露了规模、行业或 beta？
+因子有效是真因子有效，还是暴露了 beta 或波动率？
 
-## 为什么重要
-
-这一章的目的不是多记一个术语，而是把前面学到的研究流程迁移到新的问题上。
-
-你读这一章时要一直问：
-
-```text
-这个规则想解决什么问题？
-它赚的是 beta、alpha、风险溢价，还是执行/约束优势？
-它最容易在哪种市场环境失效？
-```
-
-## 核心概念
+## 必须理解的概念
 
 - 去极值
 - 标准化
-- 行业中性
-- 市值中性
+- beta 中性
+- 波动率中性
 - 残差化
 
-## 代码骨架
+## 真实数据设置
+
+- symbols: SPY, QQQ, DIA, IWM, EFA, TLT, GLD, XLE, XLF, XLK, XLU, XLV, XLI, XLY, XLP
+- start_date: 2006-01-03
+- end_date: 2026-05-18
+- rows: 5125
+- setup: Neutralize momentum factor against rolling beta and volatility
+
+## 关键代码
 
 ```python
-X = pd.concat([industry_dummies, size, beta], axis=1)
-neutral_factor = factor - LinearRegression().fit(X, factor).predict(X)
+neutral_factor = factor - X @ np.linalg.lstsq(X, factor, rcond=None)[0]
 ```
 
-这段代码是本章的最小思想骨架。正式上课时，我们会把它扩展成可复用函数、脚本、notebook 和报告。
+完整脚本：`scripts/21_factor_neutralization.py`
+
+可运行 notebook：`notebooks/21_factor_neutralization.ipynb`
+
+正式报告：`reports/`
+
+## 实跑结果
+
+| case | final_equity | ann_return | ann_vol | max_drawdown | sharpe | calmar | mean_rank_ic | icir | positive_ic_rate |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| raw | 0.8702 | -0.68% | 14.83% | -47.11% | -0.0458 | -0.0144 | -0.0171 | -0.0428 | 46.94% |
+| neutralized | 1.1754 | 0.79% | 10.97% | -34.45% | 0.0725 | 0.0231 | 0.0068 | 0.0213 | 47.35% |
 
 ## 图示
 
 ![Factor Neutralization](assets/21_factor_neutralization/21_factor_neutralization.png)
 
-这张图是预习图，用来帮助你先建立直觉。正式实验图会在本章开讲时根据真实数据生成。
+## 讲解
 
-## 实验任务
-
-- 对因子做去极值和标准化
-- 用回归残差做中性化
-- 比较中性化前后 IC
-
-## 验收标准
-
-- 能解释为什么要中性化
-- 能说明中性化可能损失有效信息
-- 能检查因子暴露
+- 中性化后 IC 变好，说明原因子里可能有不想要的 beta/波动率暴露。
+- 中性化后 IC 变差，也不等于错误，可能说明暴露本身就是收益来源。
+- 中性化要服务于问题定义，而不是机械套用。
 
 ## 本课结论
 
-本章预习阶段你要先掌握问题定义和研究框架。真正做实验时，不以“曲线好看”为标准，而以是否解决本章一开始定义的问题为标准。
+中性化是诊断工具，不是固定仪式；它可能去掉噪声，也可能去掉有效信息。
 
-## 下一步
+## 复习问题
 
-第 22 章组合多个因子。
+1. 本章策略或实验到底想解决什么问题？
+2. 结果中最重要的风险指标是什么？
+3. 如果换一个市场或成本假设，结论最可能在哪里变化？
+4. 这个实验离真实交易还缺哪一步？

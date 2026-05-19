@@ -1,0 +1,6 @@
+check,value,status
+data_rows,5125,pass
+symbols,"SPY,QQQ,DIA,IWM,EFA,TLT",pass
+parameters_recorded,MA 10/200 band 1%,pass
+cost_recorded,3.0,pass
+reference_final_equity,4.7201,pass

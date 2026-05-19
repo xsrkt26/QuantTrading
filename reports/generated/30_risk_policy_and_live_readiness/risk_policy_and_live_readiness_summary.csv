@@ -1,0 +1,5 @@
+risk_rule,limit,observed,breach_count
+max_drawdown_warning,-10%,-19.11%,1200
+max_drawdown_stop,-20%,-19.11%,0
+daily_loss_warning,-3%,-6.34%,9
+max_exposure,120%,150.00%,543
