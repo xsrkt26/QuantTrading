@@ -26,3 +26,12 @@ textbook/assets/NN_topic/
 ```
 
 代码仍然保留在 `src/`、`scripts/` 和 `notebooks/` 中。课本负责把学习体验串起来，避免只看代码或只看零散笔记。
+
+## 目录
+
+1. [01 Market Data Basics](01_market_data_basics.md)
+2. [02 Moving Average Strategy](02_moving_average_strategy.md)
+3. [03 Sample Split and Overfitting](03_sample_split_and_overfitting.md)
+4. [04 Transaction Cost Sensitivity](04_transaction_cost_sensitivity.md)
+5. [05 Execution Assumptions](05_execution_assumptions.md)
+6. [06 Trade Log and Slippage](06_trade_log_and_slippage.md)
