@@ -390,6 +390,147 @@ def evaluate_band_cost_sensitivity(
     return pd.DataFrame(rows)
 
 
+def evaluate_multi_asset_band_filter(
+    data_by_symbol: dict[str, pd.DataFrame],
+    band_pct: float = 0.01,
+    short_window: int = 10,
+    long_window: int = 200,
+    transaction_cost_bps: float = 3.0,
+    slippage_bps: float = 2.0,
+    commission_bps: float = 1.0,
+) -> pd.DataFrame:
+    """Compare baseline and band-filtered moving averages across assets."""
+    rows = []
+    variants = [
+        FilterVariant("baseline", "baseline"),
+        FilterVariant(f"band_{band_pct:.2%}", "band", band_pct=band_pct),
+    ]
+
+    for symbol, df in data_by_symbol.items():
+        for variant in variants:
+            strategy = add_filtered_moving_average_strategy_next_open(
+                df,
+                variant=variant,
+                short_window=short_window,
+                long_window=long_window,
+                transaction_cost_bps=transaction_cost_bps,
+            )
+            trade_log = build_round_trip_trade_log(
+                strategy,
+                slippage_bps=slippage_bps,
+                commission_bps=commission_bps,
+            )
+            trade_summary = summarize_trade_log(trade_log)
+            attributed = add_trade_attribution(trade_log)
+            duration_summary = summarize_by_duration(attributed)
+            daily_metrics = _performance_metrics(strategy["strategy_return"])
+
+            short_duration = duration_summary.loc[
+                duration_summary["duration_bucket"] == "<=30d"
+            ]
+            short_trade_count = (
+                int(short_duration["trades"].iloc[0])
+                if not short_duration.empty
+                else 0
+            )
+            short_trade_contribution = (
+                float(short_duration["contribution_to_total_gain"].iloc[0])
+                if not short_duration.empty
+                else np.nan
+            )
+
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "variant": variant.name,
+                    "start_date": strategy.index.min().strftime("%Y-%m-%d"),
+                    "end_date": strategy.index.max().strftime("%Y-%m-%d"),
+                    "rows": len(strategy),
+                    "daily_final_equity": daily_metrics["final_equity"],
+                    "annualized_return": daily_metrics["annualized_return"],
+                    "max_drawdown": daily_metrics["max_drawdown"],
+                    "calmar": daily_metrics["calmar"],
+                    "single_side_trades": float(strategy["trade"].sum()),
+                    "round_trip_trades": int(trade_summary.loc[0, "trades"]),
+                    "win_rate": float(trade_summary.loc[0, "win_rate"]),
+                    "final_trade_equity": float(
+                        trade_summary.loc[0, "final_trade_equity"]
+                    ),
+                    "short_trade_count": short_trade_count,
+                    "short_trade_contribution": short_trade_contribution,
+                    "time_in_market": float(strategy["position"].mean()),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def summarize_multi_asset_band_filter(results: pd.DataFrame) -> pd.DataFrame:
+    """Summarize band-filter deltas versus baseline for each asset."""
+    _require_columns(
+        results,
+        [
+            "symbol",
+            "variant",
+            "final_trade_equity",
+            "annualized_return",
+            "max_drawdown",
+            "calmar",
+            "single_side_trades",
+            "short_trade_count",
+        ],
+    )
+
+    rows = []
+    for symbol, group in results.groupby("symbol", sort=False):
+        baseline = group.loc[group["variant"] == "baseline"]
+        candidate = group.loc[group["variant"] != "baseline"]
+        if baseline.empty or candidate.empty:
+            continue
+
+        base = baseline.iloc[0]
+        band = candidate.iloc[0]
+        rows.append(
+            {
+                "symbol": symbol,
+                "band_variant": band["variant"],
+                "baseline_final_trade_equity": float(base["final_trade_equity"]),
+                "band_final_trade_equity": float(band["final_trade_equity"]),
+                "final_trade_equity_delta": float(
+                    band["final_trade_equity"] - base["final_trade_equity"]
+                ),
+                "baseline_annualized_return": float(base["annualized_return"]),
+                "band_annualized_return": float(band["annualized_return"]),
+                "annualized_return_delta": float(
+                    band["annualized_return"] - base["annualized_return"]
+                ),
+                "baseline_max_drawdown": float(base["max_drawdown"]),
+                "band_max_drawdown": float(band["max_drawdown"]),
+                "max_drawdown_delta": float(
+                    band["max_drawdown"] - base["max_drawdown"]
+                ),
+                "baseline_calmar": float(base["calmar"]),
+                "band_calmar": float(band["calmar"]),
+                "calmar_delta": float(band["calmar"] - base["calmar"]),
+                "baseline_single_side_trades": float(base["single_side_trades"]),
+                "band_single_side_trades": float(band["single_side_trades"]),
+                "trade_reduction": float(
+                    base["single_side_trades"] - band["single_side_trades"]
+                ),
+                "baseline_short_trade_count": int(base["short_trade_count"]),
+                "band_short_trade_count": int(band["short_trade_count"]),
+                "short_trade_reduction": int(
+                    base["short_trade_count"] - band["short_trade_count"]
+                ),
+                "band_beats_baseline": bool(
+                    band["final_trade_equity"] > base["final_trade_equity"]
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def plot_band_sensitivity(
     results: pd.DataFrame,
     output_path: str | Path | None = None,
@@ -430,6 +571,70 @@ def plot_band_sensitivity(
         axis.set_xlabel("Band (%)")
         axis.grid(True, alpha=0.25)
         axis.legend(loc="best")
+
+    fig.tight_layout()
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
+def plot_multi_asset_band_filter(
+    comparison: pd.DataFrame,
+    output_path: str | Path | None = None,
+) -> plt.Figure:
+    """Plot multi-asset baseline versus band-filter deltas."""
+    required_columns = [
+        "symbol",
+        "annualized_return_delta",
+        "max_drawdown_delta",
+        "trade_reduction",
+        "final_trade_equity_delta",
+    ]
+    _require_columns(comparison, required_columns)
+
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9))
+    x = np.arange(len(comparison))
+    labels = comparison["symbol"]
+
+    axes[0, 0].bar(
+        x,
+        comparison["annualized_return_delta"],
+        color=np.where(comparison["annualized_return_delta"] >= 0, "#2ca02c", "#d62728"),
+    )
+    axes[0, 0].axhline(0, color="#222222", linewidth=0.8)
+    axes[0, 0].set_title("Annualized Return Delta")
+    axes[0, 0].set_ylabel("Band - Baseline")
+
+    axes[0, 1].bar(
+        x,
+        comparison["max_drawdown_delta"],
+        color=np.where(comparison["max_drawdown_delta"] >= 0, "#2ca02c", "#d62728"),
+    )
+    axes[0, 1].axhline(0, color="#222222", linewidth=0.8)
+    axes[0, 1].set_title("Max Drawdown Delta")
+    axes[0, 1].set_ylabel("Band - Baseline")
+
+    axes[1, 0].bar(x, comparison["trade_reduction"], color="#1f77b4")
+    axes[1, 0].axhline(0, color="#222222", linewidth=0.8)
+    axes[1, 0].set_title("Single-Side Trade Reduction")
+    axes[1, 0].set_ylabel("Baseline - Band")
+
+    axes[1, 1].bar(
+        x,
+        comparison["final_trade_equity_delta"],
+        color=np.where(comparison["final_trade_equity_delta"] >= 0, "#2ca02c", "#d62728"),
+    )
+    axes[1, 1].axhline(0, color="#222222", linewidth=0.8)
+    axes[1, 1].set_title("Final Trade Equity Delta")
+    axes[1, 1].set_ylabel("Band - Baseline")
+
+    for axis in axes.ravel():
+        axis.set_xticks(x)
+        axis.set_xticklabels(labels)
+        axis.grid(True, axis="y", alpha=0.25)
 
     fig.tight_layout()
     if output_path is not None:
@@ -498,6 +703,57 @@ def format_band_cost_sensitivity_table(results: pd.DataFrame) -> str:
     formatted["single_side_trades"] = formatted["single_side_trades"].map(
         lambda value: f"{value:.0f}"
     )
+    return _to_markdown_table(formatted)
+
+
+def format_multi_asset_results_table(results: pd.DataFrame) -> str:
+    """Format multi-asset raw baseline/band rows as markdown."""
+    columns = [
+        "symbol",
+        "variant",
+        "final_trade_equity",
+        "annualized_return",
+        "max_drawdown",
+        "calmar",
+        "single_side_trades",
+        "round_trip_trades",
+        "short_trade_count",
+        "time_in_market",
+    ]
+    formatted = results[columns].copy()
+    formatted["final_trade_equity"] = formatted["final_trade_equity"].map(
+        lambda value: f"{value:.4f}"
+    )
+    for col in ["annualized_return", "max_drawdown", "time_in_market"]:
+        formatted[col] = formatted[col].map(_format_pct)
+    formatted["calmar"] = formatted["calmar"].map(_format_ratio)
+    for col in ["single_side_trades", "round_trip_trades", "short_trade_count"]:
+        formatted[col] = formatted[col].map(lambda value: f"{value:.0f}")
+    return _to_markdown_table(formatted)
+
+
+def format_multi_asset_summary_table(comparison: pd.DataFrame) -> str:
+    """Format multi-asset baseline-vs-band comparison rows as markdown."""
+    columns = [
+        "symbol",
+        "baseline_final_trade_equity",
+        "band_final_trade_equity",
+        "annualized_return_delta",
+        "max_drawdown_delta",
+        "calmar_delta",
+        "trade_reduction",
+        "short_trade_reduction",
+        "band_beats_baseline",
+    ]
+    formatted = comparison[columns].copy()
+    for col in ["baseline_final_trade_equity", "band_final_trade_equity"]:
+        formatted[col] = formatted[col].map(lambda value: f"{value:.4f}")
+    for col in ["annualized_return_delta", "max_drawdown_delta"]:
+        formatted[col] = formatted[col].map(_format_pct)
+    formatted["calmar_delta"] = formatted["calmar_delta"].map(_format_ratio)
+    for col in ["trade_reduction", "short_trade_reduction"]:
+        formatted[col] = formatted[col].map(lambda value: f"{value:.0f}")
+    formatted["band_beats_baseline"] = formatted["band_beats_baseline"].map(str)
     return _to_markdown_table(formatted)
 
 

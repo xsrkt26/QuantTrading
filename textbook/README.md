@@ -38,3 +38,4 @@ textbook/assets/NN_topic/
 7. [07 Trade Review and Attribution](07_trade_review_and_attribution.md)
 8. [08 MA Filter Improvement](08_ma_filter_improvement.md)
 9. [09 Band Robustness](09_band_robustness.md)
+10. [10 Multi-Asset Validation](10_multi_asset_validation.md)

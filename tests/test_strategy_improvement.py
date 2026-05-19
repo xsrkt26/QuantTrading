@@ -9,6 +9,8 @@ from quant_trading.strategy_improvement import (
     evaluate_band_cost_sensitivity,
     evaluate_band_sensitivity,
     evaluate_filter_variants,
+    evaluate_multi_asset_band_filter,
+    summarize_multi_asset_band_filter,
 )
 
 
@@ -139,3 +141,29 @@ def test_evaluate_band_cost_sensitivity_returns_cost_rows() -> None:
 
     assert set(result["cost_bps"]) == {0, 10}
     assert set(result["band_pct"]) == {0.0, 0.01}
+
+
+def test_evaluate_multi_asset_band_filter_returns_symbol_rows() -> None:
+    df = pd.DataFrame(
+        {
+            "Open": [100, 101, 102, 103, 104, 105, 106, 107],
+            "Close": [100, 101, 102, 103, 104, 105, 106, 107],
+        },
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+
+    result = evaluate_multi_asset_band_filter(
+        {"AAA": df, "BBB": df},
+        band_pct=0.01,
+        short_window=2,
+        long_window=3,
+        transaction_cost_bps=0,
+        slippage_bps=0,
+        commission_bps=0,
+    )
+    comparison = summarize_multi_asset_band_filter(result)
+
+    assert set(result["symbol"]) == {"AAA", "BBB"}
+    assert set(result["variant"]) == {"baseline", "band_1.00%"}
+    assert set(comparison["symbol"]) == {"AAA", "BBB"}
+    assert "annualized_return_delta" in comparison.columns
