@@ -46,6 +46,17 @@
 
 - 任意一个研究或策略，都能从仓库中找到对应笔记、代码和结论。
 
+## 每节课交付规范
+
+每节课默认包含四类文件：
+
+- `notebooks/NN_topic.ipynb`：可运行代码讲义。
+- `notes/YYYY-MM-DD-topic.md`：概念笔记。
+- `notes/YYYY-MM-DD-topic-explained.md`：逐段讲解，用来配合 notebook 阅读。
+- `reports/YYYY-MM-DD_topic.md`：有实证结果时保存正式报告。
+
+以后每次新增讲义后，都要补一份 `*-explained.md`，说明代码每一段在做什么、为什么这么做、结果应该如何解读。
+
 ## 阶段 1：Python 数据分析基础
 
 目标：能熟练处理日线行情数据，并画出基础分析图。
