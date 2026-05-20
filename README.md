@@ -1,6 +1,34 @@
-# QuantTrading
+# quant-trading-lab
 
-这个目录用于系统学习量化交易，沉淀后续的代码、策略、研究过程、学习路线图和总结笔记。
+Python research lab for learning quantitative trading through reproducible
+experiments, small backtesting utilities, notebooks, and written strategy notes.
+
+这个仓库用于系统学习量化交易，沉淀代码、策略假设、研究过程、学习路线图和复盘笔记。
+
+## Highlights
+
+- Reusable Python modules under `src/quant_trading/`.
+- Unit tests covering market-data handling, moving-average strategies, execution costs, attribution, and validation logic.
+- Jupyter notebooks and generated reports for research iterations.
+- Written notes that track assumptions, risk controls, and follow-up questions instead of only storing code.
+
+## Quickstart
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pytest
+```
+
+On macOS/Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest
+```
 
 ## 目录结构
 
